@@ -19,9 +19,22 @@ sddc_t *current_running;
 
 static void Callback(void* context, const float* data, uint32_t len)
 {
+	// RadioHandler calls this with FLOAT data, but connector expects UINT8* (raw bytes)
+	// Cast FLOAT buffer to UINT8* and forward to user callback
+	rawdata* ctx = reinterpret_cast<rawdata*>(context);
+	if (ctx && ctx->t && ctx->t->callback) {
+		// len is number of FLOAT samples, convert to byte count
+		uint32_t byte_len = len * sizeof(float);
+		ctx->t->callback(byte_len, reinterpret_cast<uint8_t*>(const_cast<float*>(data)), ctx->t->callback_context);
+	}
 }
 
 class rawdata : public r2iqControlClass {
+public:
+    sddc_t* t;
+    
+    rawdata(sddc_t* device) : t(device), idx(0) {}
+    
     void Init(float gain, ringbuffer<int16_t>* buffers, ringbuffer<float>* obuffers) override
     {
         idx = 0;
@@ -94,7 +107,7 @@ sddc_t *sddc_open(int index, const char* imagefile)
 
     ret_val->handler = new RadioHandlerClass();
 
-    if (ret_val->handler->Init(fx3, Callback, new rawdata()))
+    if (ret_val->handler->Init(fx3, Callback, new rawdata(ret_val)))
     {
         ret_val->status = SDDC_STATUS_READY;
         ret_val->samplerateidx = 0;
