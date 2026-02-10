@@ -61,8 +61,6 @@ int sddc_free_device_info(struct sddc_device_info *sddc_device_infos)
     return 0;
 }
 
-static bool supports_high_adc_frequency(sddc_t *t);
-
 sddc_t *sddc_open(int index, const char* imagefile)
 {
     auto ret_val = new sddc_t();
@@ -102,7 +100,7 @@ sddc_t *sddc_open(int index, const char* imagefile)
         ret_val->samplerateidx = 0;
 
         // Set default ADC frequency based on hardware capability
-        if (supports_high_adc_frequency(ret_val))
+        if (sddc_supports_high_adc_frequency(ret_val))
         {
             adcnominalfreq = 128000000;  // 128MHz for RX888/r2/r3/999
             ret_val->handler->UpdateSampleRate(adcnominalfreq);  // Apply to hardware
@@ -260,7 +258,7 @@ int sddc_set_adc_frequency(sddc_t *t, double frequency)
         return -1;
 
     // Check if device supports ADC frequencies above 64MHz
-    if (freq > 64000000 && !supports_high_adc_frequency(t))
+    if (freq > 64000000 && !sddc_supports_high_adc_frequency(t))
         return -1;
 
     adcnominalfreq = freq;
