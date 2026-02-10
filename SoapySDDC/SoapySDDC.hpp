@@ -139,6 +139,9 @@ private:
     fx3class *Fx3;
     RadioHandlerClass RadioHandler;
 
+    // Helper to check if device supports high ADC frequencies
+    bool supportsHighADCFrequency() const;
+
 public:
     int Callback(void *context, const float *data, uint32_t len);
 
