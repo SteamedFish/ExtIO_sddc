@@ -40,14 +40,30 @@ private:
 
 static void Callback(void* context, const float* data, uint32_t len)
 {
+	static int callback_count = 0;
+	if (callback_count++ % 1000 == 0) {
+		fprintf(stderr, "DEBUG libsddc: Callback #%d received (len=%u floats)\n", callback_count, len);
+	}
+	
 	// RadioHandler calls this with FLOAT data, but connector expects UINT8* (raw bytes)
 	// Cast FLOAT buffer to UINT8* and forward to user callback
 	rawdata* ctx = reinterpret_cast<rawdata*>(context);
-	if (ctx && ctx->t && ctx->t->callback) {
-		// len is number of FLOAT samples, convert to byte count
-		uint32_t byte_len = len * sizeof(float);
-		ctx->t->callback(byte_len, reinterpret_cast<uint8_t*>(const_cast<float*>(data)), ctx->t->callback_context);
+	if (!ctx) {
+		fprintf(stderr, "ERROR libsddc: Callback received null context!\n");
+		return;
 	}
+	if (!ctx->t) {
+		fprintf(stderr, "ERROR libsddc: Callback context has null sddc_t pointer!\n");
+		return;
+	}
+	if (!ctx->t->callback) {
+		fprintf(stderr, "ERROR libsddc: sddc_t has null callback pointer!\n");
+		return;
+	}
+	
+	// len is number of FLOAT samples, convert to byte count
+	uint32_t byte_len = len * sizeof(float);
+	ctx->t->callback(byte_len, reinterpret_cast<uint8_t*>(const_cast<float*>(data)), ctx->t->callback_context);
 }
 
 int sddc_get_device_count()
