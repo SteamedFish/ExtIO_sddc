@@ -17,27 +17,6 @@ struct sddc
 
 sddc_t *current_running;
 
-class rawdata : public r2iqControlClass {
-public:
-    sddc_t* t;
-    
-    rawdata(sddc_t* device) : t(device), idx(0) {}
-    
-    void Init(float gain, ringbuffer<int16_t>* buffers, ringbuffer<float>* obuffers) override
-    {
-        idx = 0;
-    }
-
-    void TurnOn() override
-    {
-        this->r2iqOn = true;
-        idx = 0;
-    }
-
-private:
-    int idx;
-};
-
 static void Callback(void* context, const float* data, uint32_t len)
 {
 	static int callback_count = 0;
@@ -45,25 +24,18 @@ static void Callback(void* context, const float* data, uint32_t len)
 		fprintf(stderr, "DEBUG libsddc: Callback #%d received (len=%u floats)\n", callback_count, len);
 	}
 	
-	// RadioHandler calls this with FLOAT data, but connector expects UINT8* (raw bytes)
-	// Cast FLOAT buffer to UINT8* and forward to user callback
-	rawdata* ctx = reinterpret_cast<rawdata*>(context);
-	if (!ctx) {
+	sddc_t* t = reinterpret_cast<sddc_t*>(context);
+	if (!t) {
 		fprintf(stderr, "ERROR libsddc: Callback received null context!\n");
 		return;
 	}
-	if (!ctx->t) {
-		fprintf(stderr, "ERROR libsddc: Callback context has null sddc_t pointer!\n");
-		return;
-	}
-	if (!ctx->t->callback) {
+	if (!t->callback) {
 		fprintf(stderr, "ERROR libsddc: sddc_t has null callback pointer!\n");
 		return;
 	}
 	
-	// len is number of FLOAT samples, convert to byte count
 	uint32_t byte_len = len * sizeof(float);
-	ctx->t->callback(byte_len, reinterpret_cast<uint8_t*>(const_cast<float*>(data)), ctx->t->callback_context);
+	t->callback(byte_len, reinterpret_cast<uint8_t*>(const_cast<float*>(data)), t->callback_context);
 }
 
 int sddc_get_device_count()
@@ -123,7 +95,9 @@ sddc_t *sddc_open(int index, const char* imagefile)
 
     ret_val->handler = new RadioHandlerClass();
 
-    if (ret_val->handler->Init(fx3, Callback, new rawdata(ret_val)))
+    // Pass nullptr to use RadioHandler's default fft_mt_r2iq processor instead of rawdata
+    // rawdata has no actual data processing logic, causing outputbuffer to remain empty
+    if (ret_val->handler->Init(fx3, Callback, nullptr, ret_val))
     {
         ret_val->status = SDDC_STATUS_READY;
         ret_val->samplerateidx = 0;
