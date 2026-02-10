@@ -111,6 +111,8 @@ public:
 
     void writeSetting(const std::string &key, const std::string &value);
 
+    std::string readSetting(const std::string &key) const;
+
     // void setMasterClockRate(const double rate);
 
     // double getMasterClockRate(void) const;
@@ -156,4 +158,7 @@ public:
     int samplerateidx;
 
     double masterClockRate;
+
+    // Helper to check if device supports high ADC frequencies
+    bool supportsHighADCFrequency() const;
 };
