@@ -161,7 +161,4 @@ public:
     int samplerateidx;
 
     double masterClockRate;
-
-    // Helper to check if device supports high ADC frequencies
-    bool supportsHighADCFrequency() const;
 };
