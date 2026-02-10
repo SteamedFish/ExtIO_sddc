@@ -244,13 +244,13 @@ double sddc_get_adc_frequency(sddc_t *t)
     return (double)adcnominalfreq;
 }
 
-static bool supports_high_adc_frequency(sddc_t *t)
+int sddc_supports_high_adc_frequency(sddc_t *t)
 {
     SDDCHWModel model = sddc_get_hw_model(t);
-    return model == HW_RX888 ||
-           model == HW_RX888R2 ||
-           model == HW_RX888R3 ||
-           model == HW_RX999;
+    return (model == HW_RX888 ||
+            model == HW_RX888R2 ||
+            model == HW_RX888R3 ||
+            model == HW_RX999) ? 1 : 0;
 }
 
 int sddc_set_adc_frequency(sddc_t *t, double frequency)

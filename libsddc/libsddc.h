@@ -105,6 +105,8 @@ double sddc_get_adc_frequency(sddc_t *t);
 
 int sddc_set_adc_frequency(sddc_t *t, double frequency);
 
+int sddc_supports_high_adc_frequency(sddc_t *t);
+
 int sddc_get_adc_dither(sddc_t *t);
 
 int sddc_set_adc_dither(sddc_t *t, int dither);
