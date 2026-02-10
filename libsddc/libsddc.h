@@ -101,6 +101,10 @@ int sddc_led_toggle(sddc_t *t, uint8_t led_pattern);
 
 
 /* ADC functions */
+double sddc_get_adc_frequency(sddc_t *t);
+
+int sddc_set_adc_frequency(sddc_t *t, double frequency);
+
 int sddc_get_adc_dither(sddc_t *t);
 
 int sddc_set_adc_dither(sddc_t *t, int dither);

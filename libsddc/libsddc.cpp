@@ -61,6 +61,8 @@ int sddc_free_device_info(struct sddc_device_info *sddc_device_infos)
     return 0;
 }
 
+static bool supports_high_adc_frequency(sddc_t *t);
+
 sddc_t *sddc_open(int index, const char* imagefile)
 {
     auto ret_val = new sddc_t();
@@ -98,6 +100,18 @@ sddc_t *sddc_open(int index, const char* imagefile)
     {
         ret_val->status = SDDC_STATUS_READY;
         ret_val->samplerateidx = 0;
+
+        // Set default ADC frequency based on hardware capability
+        if (supports_high_adc_frequency(ret_val))
+        {
+            adcnominalfreq = 128000000;  // 128MHz for RX888/r2/r3/999
+            ret_val->handler->UpdateSampleRate(adcnominalfreq);  // Apply to hardware
+        }
+        else
+        {
+            adcnominalfreq = DEFAULT_ADC_FREQ;  // 64MHz for other devices
+            // Hardware already initialized with DEFAULT_ADC_FREQ during Init()
+        }
     }
 
     return ret_val;
@@ -224,6 +238,35 @@ int sddc_led_toggle(sddc_t *t, uint8_t led_pattern)
 
 
 /* ADC functions */
+double sddc_get_adc_frequency(sddc_t *t)
+{
+    return (double)adcnominalfreq;
+}
+
+static bool supports_high_adc_frequency(sddc_t *t)
+{
+    SDDCHWModel model = sddc_get_hw_model(t);
+    return model == HW_RX888 ||
+           model == HW_RX888R2 ||
+           model == HW_RX888R3 ||
+           model == HW_RX999;
+}
+
+int sddc_set_adc_frequency(sddc_t *t, double frequency)
+{
+    int64_t freq = (int64_t)frequency;
+    if (freq < MIN_ADC_FREQ || freq > MAX_ADC_FREQ)
+        return -1;
+
+    // Check if device supports ADC frequencies above 64MHz
+    if (freq > 64000000 && !supports_high_adc_frequency(t))
+        return -1;
+
+    adcnominalfreq = freq;
+    t->handler->UpdateSampleRate(adcnominalfreq);
+    return 0;
+}
+
 int sddc_get_adc_dither(sddc_t *t)
 {
     return t->handler->GetDither();
@@ -328,35 +371,66 @@ int sddc_set_vhf_bias(sddc_t *t, int bias)
 
 double sddc_get_sample_rate(sddc_t *t)
 {
-    return 0;
+    return t->handler->getSampleRate();
 }
 
 int sddc_set_sample_rate(sddc_t *t, double sample_rate)
 {
-    switch((int64_t)sample_rate)
+    int64_t rate = (int64_t)sample_rate;
+
+    if (adcnominalfreq > N2_BANDSWITCH)
     {
-        case 32000000:
-            t->samplerateidx = 0;
-            break;
-        case 16000000:
-            t->samplerateidx = 1;
-            break;
-        case 8000000:
-            t->samplerateidx = 2;
-            break;
-        case 4000000:
-            t->samplerateidx = 3;
-            break;
-        case 2000000:
-            t->samplerateidx = 4;
-            break;
-        default:
-            return -1;
+        switch(rate)
+        {
+            case 64000000:
+                t->samplerateidx = 5;
+                break;
+            case 32000000:
+                t->samplerateidx = 4;
+                break;
+            case 16000000:
+                t->samplerateidx = 3;
+                break;
+            case 8000000:
+                t->samplerateidx = 2;
+                break;
+            case 4000000:
+                t->samplerateidx = 1;
+                break;
+            case 2000000:
+                t->samplerateidx = 0;
+                break;
+            default:
+                return -1;
+        }
+    }
+    else
+    {
+        switch(rate)
+        {
+            case 32000000:
+                t->samplerateidx = 4;
+                break;
+            case 16000000:
+                t->samplerateidx = 3;
+                break;
+            case 8000000:
+                t->samplerateidx = 2;
+                break;
+            case 4000000:
+                t->samplerateidx = 1;
+                break;
+            case 2000000:
+                t->samplerateidx = 0;
+                break;
+            default:
+                return -1;
+        }
     }
     return 0;
 }
 
-int sddc_set_async_params(sddc_t *t, uint32_t frame_size, 
+int sddc_set_async_params(sddc_t *t, uint32_t frame_size,
                           uint32_t num_frames, sddc_read_async_cb_t callback,
                           void *callback_context)
 {
